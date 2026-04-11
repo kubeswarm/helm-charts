@@ -1,3 +1,27 @@
 apiVersion: v1
-entries: {}
-generated: "2026-04-11T20:15:14.146556+03:00"
+entries:
+  kubeswarm:
+  - apiVersion: v2
+    appVersion: 0.1.0-alpha.1
+    created: "2026-04-11T17:38:59.184508988Z"
+    description: Kubernetes operator for running AI agents in production.
+    digest: c936709cd9ed53a574159d01f2cba6a55911cd975c07d1f9506096252709d44d
+    home: https://kubeswarm.io
+    icon: https://kubeswarm.io/assets/icon.png
+    keywords:
+    - ai
+    - agents
+    - llm
+    - kubernetes
+    - operator
+    maintainers:
+    - name: rdmnl
+      url: https://github.com/rdmnl
+    name: kubeswarm
+    sources:
+    - https://github.com/kubeswarm/kubeswarm
+    type: application
+    urls:
+    - https://kubeswarm.github.io/helm-charts/kubeswarm-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-04-11T17:38:59.182480526Z"
