@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - charts/*/Chart.yaml
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and publish Helm charts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read chart version
+        id: chart
+        run: |
+          VERSION=$(grep '^version:' charts/kubeswarm/Chart.yaml | awk '{print $2}')
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if already released
+        id: check
+        run: |
+          if git ls-remote --tags origin "${{ steps.chart.outputs.version }}" | grep -q "${{ steps.chart.outputs.version }}"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.chart.outputs.version }}"
+          git push origin "${{ steps.chart.outputs.version }}"
+
+      - name: Install Helm
+        if: steps.check.outputs.exists == 'false'
+        env:
+          HELM_VERSION: v3.17.2
+        run: |
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz --strip-components=1 -C /usr/local/bin linux-amd64/helm
+
+      - name: Package charts
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          mkdir -p /tmp/helm-packages
+          for chart in charts/*/; do
+            echo "-- packaging: $chart"
+            helm package "$chart" --destination /tmp/helm-packages
+          done
+
+      - name: Checkout gh-pages branch
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Update repo index
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          cp /tmp/helm-packages/*.tgz gh-pages/
+          helm repo index gh-pages \
+            --url "https://kubeswarm.github.io/helm-charts" \
+            --merge gh-pages/index.yaml
+
+      - name: Push to gh-pages
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --staged --quiet && echo "nothing to commit" && exit 0
+          git commit -m "chore: release charts for ${{ steps.chart.outputs.version }}"
+          git push
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.chart.outputs.version }}" \
+            --title "Release ${{ steps.chart.outputs.version }}" \
+            --generate-notes \
+            /tmp/helm-packages/*.tgz

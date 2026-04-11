@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Skip for tag pushes.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -q '^refs/tags/'; then
+    exit 0
+  fi
+done
+
+echo "Running helm lint before push..."
+for chart in charts/*/; do
+  echo "-- lint: $chart"
+  helm lint "$chart"
+done

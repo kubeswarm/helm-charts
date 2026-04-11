@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "taskQueueURL": {
+      "type": "string",
+      "description": "Task queue URL (required). Example: redis://my-redis:6379",
+      "pattern": "^(redis://|rediss://).*$"
+    },
+    "streamChannelURL": {
+      "type": "string",
+      "description": "Redis URL for SSE token streaming. Defaults to taskQueueURL when empty.",
+      "pattern": "^(redis://|rediss://|).*$"
+    },
+    "spendStoreURL": {
+      "type": "string",
+      "description": "Redis URL for spend tracking. Defaults to taskQueueURL when empty.",
+      "pattern": "^(redis://|rediss://|).*$"
+    },
+    "auditLog": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["off", "actions", "verbose"],
+          "description": "Audit log verbosity."
+        },
+        "sink": {
+          "type": "string",
+          "enum": ["stdout", "redis", "webhook"],
+          "description": "Audit output backend."
+        },
+        "redisURL": {
+          "type": "string",
+          "description": "Redis URL for audit log. Required when sink is redis. No fallback.",
+          "pattern": "^(redis://|rediss://|).*$"
+        },
+        "webhookURL": {
+          "type": "string",
+          "description": "Webhook URL for audit log. Required when sink is webhook."
+        },
+        "retention": {
+          "type": "string",
+          "description": "Audit event retention in Go duration format (e.g., 168h for 7 days).",
+          "pattern": "^[0-9]+(h|m|s)$"
+        },
+        "maxStreamLen": {
+          "type": "integer",
+          "minimum": 1000,
+          "description": "MAXLEN ~ cap on the audit Redis stream per namespace. Default 100000."
+        },
+        "maxDetailBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Max size for detail.input/output before truncation. 0 means unlimited."
+        },
+        "redact": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for field path redaction."
+        },
+        "excludeActions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Action types to skip."
+        }
+      }
+    },
+    "otel": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "OTLP collector endpoint. Leave empty to disable."
+        }
+      }
+    }
+  }
+}

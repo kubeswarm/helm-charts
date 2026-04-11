@@ -1,0 +1,177 @@
+# Default values for kubeswarm.
+
+# Number of operator replicas. More than 1 requires leaderElection.enabled = true.
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/kubeswarm/kubeswarm-controller
+  pullPolicy: IfNotPresent
+  # Overrides the image tag. Defaults to the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+
+# Namespace to deploy into. Defaults to the release namespace.
+# Override with --namespace or --create-namespace on helm install.
+
+serviceAccount:
+  # Name of the ServiceAccount to create and use.
+  name: kubeswarm
+
+# The container image used for SwarmAgent runtime pods.
+agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.1
+agentImagePullPolicy: Always
+
+# dashboard - real-time web UI for monitoring and operating deployments.
+# Disabled by default; enable for local dev or in-cluster monitoring.
+dashboard:
+  enabled: false
+  image: ghcr.io/kubeswarm/dashboard:0.1.0
+  imagePullPolicy: IfNotPresent
+
+# Task queue connection string (required).
+# Example: redis://my-redis.production.svc.cluster.local:6379
+taskQueueURL: ""
+
+# Redis connection string for SSE token streaming.
+# Defaults to taskQueueURL when empty.
+streamChannelURL: ""
+
+# Redis connection string for spend tracking (RFC-0031).
+# Defaults to taskQueueURL when empty. Set to a separate instance when budget
+# accuracy is business-critical or write volume impacts queue latency.
+spendStoreURL: ""
+
+# Name of a ConfigMap in the operator namespace containing per-model pricing.
+# When set, the operator loads custom prices from this ConfigMap instead of using
+# built-in defaults. See RFC-0011 for the expected format.
+# Example: kubeswarm-cost-pricing
+costConfigmap: ""
+
+leaderElection:
+  enabled: true
+
+triggerWebhook:
+  # Address the SwarmEvent webhook server listens on inside the pod.
+  addr: ":8092"
+  # External URL of the webhook server. Written to SwarmEvent status.webhookURL.
+  # Example: http://kubeswarm.kubeswarm-system.svc.cluster.local:8092
+  url: ""
+
+mcpGateway:
+  # Address the MCP SSE gateway listens on inside the pod (RFC-0020).
+  addr: ":8093"
+  # External URL of the MCP gateway. Written to SwarmAgent status and used to resolve
+  # agentRef/capabilityRef entries in spec.tools.mcp and spec.agents. Must be reachable from agent pods.
+  # Example: http://kubeswarm.kubeswarm-system.svc.cluster.local:8093
+  url: ""
+
+# Admission webhooks for inline prompt size guardrails.
+# These are ValidatingWebhooks (failurePolicy=Ignore) - they warn/deny oversized inline
+# prompts before they hit etcd, but never block kubectl apply if the operator is unavailable.
+# Requires TLS for the operator webhook server (port 9443).
+admissionWebhooks:
+  enabled: false
+  # Name of a Secret in the operator namespace containing tls.crt and tls.key.
+  # The operator mounts it at /tmp/k8s-webhook-server/serving-certs.
+  certSecret: ""
+  # Base64-encoded CA certificate bundle. The API server uses this to verify the
+  # operator's webhook TLS certificate. Required when enabled=true.
+  caBundle: ""
+
+# Service for the SwarmEvent webhook server.
+service:
+  # ClusterIP: reachable from within the cluster only.
+  # LoadBalancer: exposes externally via cloud load balancer.
+  # NodePort: exposes externally via node port.
+  type: ClusterIP
+  port: 8092
+
+
+# Audit trail configuration (RFC-0030).
+# Cluster-level defaults. Can be overridden per-namespace (SwarmSettings) or per-agent.
+auditLog:
+  # mode controls the verbosity of audit logging.
+  # off: no audit events emitted (default).
+  # actions: emit structured action events (tool calls, delegations, lifecycle, budget).
+  # verbose: emit action events plus full LLM conversation turns (expensive).
+  mode: "off"
+  # sink selects the output backend: stdout | redis | webhook
+  sink: stdout
+  # webhookURL is required when sink=webhook.
+  webhookURL: ""
+  # redisURL is required when sink=redis. Use a separate Redis instance (see RFC-0031).
+  redisURL: ""
+  # retention controls how long audit events are kept in the Redis stream.
+  # Go duration format (e.g., 168h for 7 days). Only applies to the redis sink.
+  retention: 168h
+  # maxStreamLen is the MAXLEN ~ cap on the audit Redis stream per namespace.
+  # Tune based on throughput: at 50 agents x 60 tasks/hr x 5 events = ~15k events/hr.
+  # Default 100000 entries. Only applies to the redis sink.
+  maxStreamLen: 100000
+  # maxDetailBytes is the max size for detail.input and detail.output before truncation.
+  # 0 means unlimited.
+  maxDetailBytes: 8192
+  # redact is a list of glob patterns for field path redaction.
+  # Patterns use dot-separated paths where * matches one segment.
+  redact:
+    - "detail.input.*.apiKey"
+    - "detail.input.*.password"
+    - "detail.input.*.token"
+  # excludeActions is a list of action types to skip.
+  excludeActions: []
+
+# OpenTelemetry configuration.
+# When endpoint is set, the operator and agent pods export metrics and traces via OTLP HTTP.
+# Leave empty to disable (no-op OTel, zero overhead).
+otel:
+  # OTLP collector endpoint, e.g. http://otel-collector.monitoring.svc:4318
+  endpoint: ""
+
+# Additional environment variables injected into the operator pod.
+extraEnv: []
+
+# Environment variables forwarded to every agent pod the operator creates.
+# Use this to set cluster-wide agent defaults such as OPENAI_BASE_URL or AGENT_PROVIDER
+# without needing a per-namespace secret.
+# Example (Ollama):
+#   agentExtraEnv:
+#     - name: AGENT_PROVIDER
+#       value: openai
+#     - name: OPENAI_BASE_URL
+#       value: http://ollama.ollama.svc.cluster.local:11434/v1
+#     - name: OPENAI_API_KEY
+#       value: ollama
+agentExtraEnv: []
+
+# Mount additional env vars from existing ConfigMaps or Secrets.
+extraEnvFrom: []
+
+# Annotations added to the operator pod.
+podAnnotations: {}
+
+# Resource limits and requests for the operator pod.
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# KEDA autoscaling support.
+# When an SwarmAgent has spec.runtime.autoscaling set, the operator creates a KEDA
+# ScaledObject that scales replicas based on Redis task queue depth.
+# Requires KEDA v2 installed in the cluster (https://keda.sh/docs/deploy/).
+# The operator gracefully skips ScaledObject creation when KEDA is not present.
+keda:
+  # enabled documents that KEDA is expected to be installed in this cluster.
+  # This value is informational only - the operator detects KEDA at runtime.
+  enabled: false

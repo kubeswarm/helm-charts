@@ -1,0 +1,72 @@
+name: Bug Report
+description: Report a bug in the kubeswarm Helm charts
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill in as much detail as possible.
+        **Redact any API keys or `--set apiKeys.*` values before submitting.**
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. helm install kubeswarm kubeswarm/kubeswarm --set ...
+        2. kubectl get pods -n kubeswarm-system
+        3. See: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: helm-command
+    attributes:
+      label: Helm install / upgrade command
+      description: Redact any `--set apiKeys.*` values.
+      render: shell
+
+  - type: textarea
+    id: values
+    attributes:
+      label: Custom values.yaml (if any)
+      description: Redact secrets.
+      render: yaml
+
+  - type: input
+    id: chart-version
+    attributes:
+      label: Chart version
+      description: "`helm list -n kubeswarm-system`"
+    validations:
+      required: true
+
+  - type: input
+    id: k8s-version
+    attributes:
+      label: Kubernetes version
+      description: "`kubectl version --short`"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to the [Code of Conduct](https://github.com/kubeswarm/kubeswarm/blob/main/CODE_OF_CONDUCT.md)
+          required: true

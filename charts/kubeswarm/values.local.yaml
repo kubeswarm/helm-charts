@@ -1,0 +1,41 @@
+# Local development overrides for Kind clusters.
+# Uses locally-built images (never pulls from GHCR).
+#
+# Prerequisites:
+#   1. Deploy Redis in the cluster (or use an external one)
+#   2. Build and load images into Kind
+#
+# Usage (from kubeswarm repo):
+#   make local-up-helm
+
+image:
+  repository: kubeswarm-controller
+  tag: dev
+  pullPolicy: Never
+
+agentImage: kubeswarm-runtime:dev
+agentImagePullPolicy: Never
+
+# Task queue URL (required). Point at your Redis instance.
+taskQueueURL: "redis://redis.kubeswarm-system.svc.cluster.local:6379"
+
+triggerWebhook:
+  addr: ":8092"
+  url: http://kubeswarm.kubeswarm-system.svc.cluster.local:8092
+
+mcpGateway:
+  addr: ":8093"
+  url: http://kubeswarm.kubeswarm-system.svc.cluster.local:8093
+
+leaderElection:
+  enabled: false
+
+admissionWebhooks:
+  enabled: false
+
+agentExtraEnv: []
+extraEnv: []
+
+auditLog:
+  mode: "actions"
+  sink: stdout
