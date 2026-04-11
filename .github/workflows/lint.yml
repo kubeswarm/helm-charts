@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  helm-lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Helm
+        env:
+          HELM_VERSION: v3.17.2
+        run: |
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz --strip-components=1 -C /usr/local/bin linux-amd64/helm
+
+      - name: Lint charts
+        run: |
+          FAIL=0
+          for chart in charts/*/; do
+            echo "-- lint: $chart"
+            helm lint "$chart" || FAIL=$((FAIL+1))
+          done
+          [ $FAIL -eq 0 ]
+
+      - name: Verify Chart.yaml versions are bumped on PR
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1
+          FAIL=0
+          for chart in charts/*/; do
+            name=$(basename "$chart")
+            OLD=$(git show origin/main:"$chart/Chart.yaml" 2>/dev/null | grep '^version:' | awk '{print $2}' || echo "")
+            NEW=$(grep '^version:' "$chart/Chart.yaml" | awk '{print $2}')
+            if [ -n "$OLD" ] && [ "$OLD" = "$NEW" ]; then
+              echo "x $name: Chart.yaml version not bumped (still $OLD)"
+              FAIL=$((FAIL+1))
+            else
+              echo "ok $name: $OLD -> $NEW"
+            fi
+          done
+          [ $FAIL -eq 0 ]
+
+  scan-secrets:
+    name: Scan Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install trufflehog
+        run: |
+          curl -fsSL \
+            "https://github.com/trufflesecurity/trufflehog/releases/download/v3.88.2/trufflehog_3.88.2_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin trufflehog
+
+      - name: Scan for secrets
+        run: |
+          trufflehog git "file://$(pwd)" \
+            --only-verified \
+            --fail \
+            --no-update

@@ -1,0 +1,184 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubeswarm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubeswarm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kubeswarm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubeswarm.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "kubeswarm.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      # Must be > GracefulShutdownTimeout (8s) + preStop sleep (5s) to give
+      # the operator time to drain in-flight reconciles (including SwarmRun finalizer
+      # removal) before Kubernetes sends SIGKILL.
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: manager
+        image: {{ include "kubeswarm.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - /kubeswarm-controller
+        args:
+        {{- if .Values.leaderElection.enabled }}
+        - --leader-elect
+        {{- end }}
+        - --health-probe-bind-address=:8081
+        - --trigger-webhook-addr={{ .Values.triggerWebhook.addr }}
+        {{- if .Values.triggerWebhook.url }}
+        - --trigger-webhook-url={{ .Values.triggerWebhook.url }}
+        {{- end }}
+        - --mcp-gateway-addr={{ .Values.mcpGateway.addr }}
+        {{- if .Values.mcpGateway.url }}
+        - --mcp-gateway-url={{ .Values.mcpGateway.url }}
+        {{- end }}
+        - --agent-image={{ .Values.agentImage }}
+        - --agent-image-pull-policy={{ .Values.agentImagePullPolicy }}
+        {{- if .Values.costConfigmap }}
+        - --cost-configmap={{ .Values.costConfigmap }}
+        {{- end }}
+        {{- if .Values.admissionWebhooks.enabled }}
+        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        {{- else }}
+        - --disable-admission-webhooks
+        {{- end }}
+        env:
+        - name: TASK_QUEUE_URL
+          value: {{ include "kubeswarm.queueURL" . | quote }}
+        - name: AGENT_TASK_QUEUE_URL
+          value: {{ include "kubeswarm.queueURL" . | quote }}
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # Always forward the queue URL to agent pods so standalone SwarmAgents (not
+        # owned by an SwarmTeam) get TASK_QUEUE_URL injected without needing apiKeys set.
+        - name: SWARM_AGENT_INJECT_TASK_QUEUE_URL
+          value: {{ include "kubeswarm.queueURL" . | quote }}
+        - name: STREAM_CHANNEL_URL
+          value: {{ include "kubeswarm.streamURL" . | quote }}
+        - name: SPEND_STORE_URL
+          value: {{ include "kubeswarm.spendURL" . | quote }}
+        {{- if .Values.triggerWebhook.url }}
+        - name: TRIGGER_WEBHOOK_URL
+          value: {{ .Values.triggerWebhook.url | quote }}
+        {{- end }}
+        {{- if .Values.otel.endpoint }}
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: {{ .Values.otel.endpoint | quote }}
+        {{- end }}
+        {{- if and .Values.auditLog (ne .Values.auditLog.mode "off") }}
+        - name: AUDIT_LOG_MODE
+          value: {{ .Values.auditLog.mode | quote }}
+        - name: AUDIT_LOG_SINK
+          value: {{ .Values.auditLog.sink | default "stdout" | quote }}
+        {{- if (include "kubeswarm.auditURL" .) }}
+        - name: AUDIT_LOG_REDIS_URL
+          value: {{ include "kubeswarm.auditURL" . | quote }}
+        {{- end }}
+        {{- if .Values.auditLog.maxStreamLen }}
+        - name: AUDIT_LOG_MAX_STREAM_LEN
+          value: {{ .Values.auditLog.maxStreamLen | quote }}
+        {{- end }}
+        {{- if .Values.auditLog.maxDetailBytes }}
+        - name: AUDIT_LOG_MAX_DETAIL_BYTES
+          value: {{ .Values.auditLog.maxDetailBytes | quote }}
+        {{- end }}
+        {{- if .Values.auditLog.redact }}
+        - name: AUDIT_LOG_REDACT
+          value: {{ .Values.auditLog.redact | toJson | quote }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.extraEnv }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- range .Values.agentExtraEnv }}
+        - name: SWARM_AGENT_INJECT_{{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        {{- with .Values.extraEnvFrom }}
+        envFrom:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        ports:
+        - name: webhook
+          containerPort: 8092
+          protocol: TCP
+        - name: mcp-gateway
+          containerPort: 8093
+          protocol: TCP
+        {{- if .Values.admissionWebhooks.enabled }}
+        - name: admission
+          containerPort: 9443
+          protocol: TCP
+        {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        lifecycle:
+          preStop:
+            # Sleep before SIGTERM so kube-proxy finishes draining in-flight requests
+            # and the operator is no longer receiving new work before it starts shutting down.
+            # The GracefulShutdownTimeout (8s) then drains in-flight reconciles.
+            exec:
+              command: ["/bin/sh", "-c", "sleep 5"]
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        {{- if .Values.admissionWebhooks.enabled }}
+        volumeMounts:
+        - name: webhook-cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      {{- if .Values.admissionWebhooks.enabled }}
+      volumes:
+      - name: webhook-cert
+        secret:
+          secretName: {{ .Values.admissionWebhooks.certSecret }}
+      {{- end }}

@@ -1,0 +1,82 @@
+name: Sync kubeswarm version
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [operator-released]
+
+concurrency:
+  group: sync-operator
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve version
+        id: upstream
+        run: |
+          NEW="${{ github.event.client_payload.version || '' }}"
+          if [ -z "$NEW" ]; then
+            NEW=$(curl -sf https://api.github.com/repos/kubeswarm/kubeswarm/releases/latest \
+              | jq -r '.tag_name' | sed 's/^v//')
+          fi
+          echo "version=${NEW}" >> "$GITHUB_OUTPUT"
+
+      - name: Check current versions
+        id: current
+        run: |
+          CHART=charts/kubeswarm/Chart.yaml
+          VALUES=charts/kubeswarm/values.yaml
+          APP=$(grep '^appVersion:' "$CHART" | awk '{print $2}' | tr -d '"')
+          AGENT=$(grep 'kubeswarm-runtime:' "$VALUES" | sed 's|.*kubeswarm-runtime:||' | tr -d ' ')
+          echo "appVersion=${APP}" >> "$GITHUB_OUTPUT"
+          echo "agentImage=${AGENT}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if already up to date
+        if: steps.upstream.outputs.version == steps.current.outputs.appVersion && steps.upstream.outputs.version == steps.current.outputs.agentImage
+        run: echo "Chart already at ${{ steps.current.outputs.appVersion }}, nothing to do."
+
+      - name: Bump versions
+        if: steps.upstream.outputs.version != steps.current.outputs.appVersion || steps.upstream.outputs.version != steps.current.outputs.agentImage
+        env:
+          NEW: ${{ steps.upstream.outputs.version }}
+        run: |
+          CHART=charts/kubeswarm/Chart.yaml
+          VALUES=charts/kubeswarm/values.yaml
+
+          sed -i "s/^appVersion:.*/appVersion: \"${NEW}\"/" "$CHART"
+
+          CURRENT_CHART=$(grep '^version:' "$CHART" | awk '{print $2}')
+          MAJOR=$(echo "$CURRENT_CHART" | cut -d. -f1)
+          MINOR=$(echo "$CURRENT_CHART" | cut -d. -f2)
+          PATCH=$(echo "$CURRENT_CHART" | cut -d. -f3)
+          sed -i "s/^version:.*/version: ${MAJOR}.${MINOR}.$((PATCH + 1))/" "$CHART"
+
+          sed -i "s|kubeswarm-runtime:[^ ]*|kubeswarm-runtime:${NEW}|" "$VALUES"
+
+      - name: Push branch and open PR
+        if: steps.upstream.outputs.version != steps.current.outputs.appVersion || steps.upstream.outputs.version != steps.current.outputs.agentImage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.upstream.outputs.version }}
+        run: |
+          BRANCH="chore/bump-operator-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add charts/kubeswarm/Chart.yaml charts/kubeswarm/values.yaml
+          git commit -m "chore: bump appVersion to ${NEW}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump kubeswarm to ${NEW}" \
+            --body "Automated version sync: appVersion -> \`${NEW}\`" \
+            --head "$BRANCH" \
+            --base main \
+            --label "automated" 2>/dev/null || echo "PR already open, branch updated."

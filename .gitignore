@@ -1,0 +1,15 @@
+
+# Local environment / secrets
+.env
+.env.local
+.env.*.local
+
+# editor and IDE paraphernalia
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store

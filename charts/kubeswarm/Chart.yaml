@@ -1,0 +1,19 @@
+apiVersion: v2
+name: kubeswarm
+description: Kubernetes operator for running AI agents in production.
+type: application
+version: 0.1.0
+appVersion: "0.1.0-alpha.1"
+keywords:
+  - ai
+  - agents
+  - llm
+  - kubernetes
+  - operator
+home: https://kubeswarm.io
+icon: https://kubeswarm.io/assets/icon.png
+sources:
+  - https://github.com/kubeswarm/kubeswarm
+maintainers:
+  - name: rdmnl
+    url: https://github.com/rdmnl
