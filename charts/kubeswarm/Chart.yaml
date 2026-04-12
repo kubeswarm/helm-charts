@@ -14,7 +14,7 @@ keywords:
   - operator
   - ai-agents
 home: https://kubeswarm.io
-icon: https://kubeswarm.io/assets/icon.png
+icon: https://assets.kubeswarm.io/icon-512.png
 sources:
   - https://github.com/kubeswarm/kubeswarm
   - https://github.com/kubeswarm/helm-charts
