@@ -22,7 +22,7 @@ serviceAccount:
   name: kubeswarm
 
 # The container image used for SwarmAgent runtime pods.
-agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.1
+agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.2
 agentImagePullPolicy: Always
 
 # dashboard - real-time web UI for monitoring and operating deployments.
