@@ -70,6 +70,11 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
+      - name: Copy artifacthub-repo.yml
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          cp artifacthub-repo.yml gh-pages/ 2>/dev/null || true
+
       - name: Update repo index
         if: steps.check.outputs.exists == 'false'
         run: |

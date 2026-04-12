@@ -1,5 +1,5 @@
 ---
-repositoryID: kubeswarm
+# repositoryID: <UUID from ArtifactHub UI - fill after creating the repo>
 owners:
   - name: rdmnl
     email: erdem@kubeswarm.io
