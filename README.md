@@ -61,7 +61,7 @@ helm upgrade kubeswarm kubeswarm/kubeswarm \
 | `replicaCount` | `1` | Number of operator replicas (>1 requires `leaderElection.enabled=true`) |
 | `image.repository` | `ghcr.io/kubeswarm/kubeswarm-controller` | Operator image |
 | `image.tag` | _(chart appVersion)_ | Operator image tag |
-| `agentImage` | `ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.1` | Agent pod image |
+| `agentImage` | `ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.2` | Agent pod image |
 | `agentImagePullPolicy` | `Always` | Pull policy for agent pods |
 | `taskQueueURL` | `""` | Task queue URL (**required** - e.g. `redis://my-redis:6379`) |
 | `streamChannelURL` | `""` | Redis URL for SSE token streaming (defaults to `taskQueueURL`) |

@@ -3,7 +3,7 @@ name: kubeswarm
 description: Kubernetes operator for running AI agents in production.
 type: application
 version: 0.1.0
-appVersion: "0.1.0-alpha.1"
+appVersion: "0.1.0-alpha.2"
 keywords:
   - ai
   - agents
