@@ -1,19 +1,83 @@
 apiVersion: v2
 name: kubeswarm
-description: Kubernetes operator for running AI agents in production.
+description: Kubernetes operator that manages LLM-based agents as first-class resources.
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.1.0-alpha.2"
 keywords:
   - ai
   - agents
   - llm
+  - llmops
+  - mcp
   - kubernetes
   - operator
+  - ai-agents
 home: https://kubeswarm.io
 icon: https://kubeswarm.io/assets/icon.png
 sources:
   - https://github.com/kubeswarm/kubeswarm
+  - https://github.com/kubeswarm/helm-charts
 maintainers:
   - name: rdmnl
+    email: erdem@kubeswarm.io
     url: https://github.com/rdmnl
+annotations:
+  artifacthub.io/category: ai-machine-learning
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/operator: "true"
+  artifacthub.io/operatorCapabilities: Basic Install
+  artifacthub.io/prerelease: "true"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://kubeswarm.github.io/kubeswarm-docs
+    - name: Source
+      url: https://github.com/kubeswarm/kubeswarm
+    - name: support
+      url: https://github.com/kubeswarm/kubeswarm/issues
+  artifacthub.io/crds: |
+    - kind: SwarmAgent
+      version: v1alpha1
+      name: swarmagents.kubeswarm.io
+      displayName: SwarmAgent
+      description: An LLM-based agent with model, tools, and runtime config
+    - kind: SwarmTeam
+      version: v1alpha1
+      name: swarmteams.kubeswarm.io
+      displayName: SwarmTeam
+      description: A team of agents with orchestration (pipeline, routed, or dynamic)
+    - kind: SwarmRun
+      version: v1alpha1
+      name: swarmruns.kubeswarm.io
+      displayName: SwarmRun
+      description: A single execution of a SwarmTeam pipeline
+    - kind: SwarmBudget
+      version: v1alpha1
+      name: swarmbudgets.kubeswarm.io
+      displayName: SwarmBudget
+      description: Token spend limits with hard-stop enforcement
+    - kind: SwarmEvent
+      version: v1alpha1
+      name: swarmevents.kubeswarm.io
+      displayName: SwarmEvent
+      description: Cron, webhook, or chain triggers for runs
+    - kind: SwarmMemory
+      version: v1alpha1
+      name: swarmmemories.kubeswarm.io
+      displayName: SwarmMemory
+      description: Vector memory store reference for agent context
+    - kind: SwarmRegistry
+      version: v1alpha1
+      name: swarmregistries.kubeswarm.io
+      displayName: SwarmRegistry
+      description: Agent capability index for discovery and routing
+    - kind: SwarmNotify
+      version: v1alpha1
+      name: swarmnotifies.kubeswarm.io
+      displayName: SwarmNotify
+      description: Notification channel (Slack, webhook) for alerts
+    - kind: SwarmSettings
+      version: v1alpha1
+      name: swarmsettings.kubeswarm.io
+      displayName: SwarmSettings
+      description: Namespace-level defaults for audit, observability, and policy
