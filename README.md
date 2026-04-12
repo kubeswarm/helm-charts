@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/kubeswarm/helm-charts/actions/workflows/lint.yml"><img src="https://github.com/kubeswarm/helm-charts/actions/workflows/lint.yml/badge.svg" alt="CI"></a>
+  <a href="https://artifacthub.io/packages/search?repo=kubeswarm"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/kubeswarm" alt="Artifact Hub"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
