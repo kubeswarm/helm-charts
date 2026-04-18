@@ -1,7 +1,25 @@
 # Default values for kubeswarm.
 
+# CRD management. When crds.install=true (default), the chart installs and upgrades
+# the kubeswarm CRDs as part of the release. CRDs carry helm.sh/resource-policy: keep
+# so that helm uninstall does NOT delete them (deleting CRDs cascades to every CR in
+# the cluster, including SwarmAgents/SwarmTeams/SwarmRuns).
+#
+# Set crds.install=false when CRDs are managed out-of-band (Argo CD, Flux, kubectl apply).
+# In that case you are responsible for keeping CRD schemas in sync with the operator
+# version this chart ships.
+crds:
+  install: true
+
 # Number of operator replicas. More than 1 requires leaderElection.enabled = true.
 replicaCount: 1
+
+# Deployment strategy. Leave {} for the k8s default (RollingUpdate, maxSurge=25%, maxUnavailable=25%).
+# Example: { type: Recreate }
+strategy: {}
+
+# How many old ReplicaSets to retain for rollback.
+revisionHistoryLimit: 10
 
 nameOverride: ""
 fullnameOverride: ""
@@ -18,8 +36,16 @@ imagePullSecrets: []
 # Override with --namespace or --create-namespace on helm install.
 
 serviceAccount:
-  # Name of the ServiceAccount to create and use.
+  # Whether to create the ServiceAccount. Set to false to bring your own.
+  create: true
+  # Name of the ServiceAccount. When create=false, must already exist in the namespace.
+  # When create=true and empty, defaults to the chart fullname.
   name: kubeswarm
+  # Annotations added to the ServiceAccount. Common uses:
+  # - eks.amazonaws.com/role-arn (IRSA on AWS)
+  # - iam.gke.io/gcp-service-account (Workload Identity on GCP)
+  # - azure.workload.identity/client-id (Azure Workload Identity)
+  annotations: {}
 
 # The container image used for SwarmAgent runtime pods.
 agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.1.0-alpha.2
@@ -31,6 +57,38 @@ dashboard:
   enabled: false
   image: ghcr.io/kubeswarm/dashboard:0.1.0
   imagePullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  podLabels: {}
+  priorityClassName: ""
+  # Additional env vars for the dashboard container.
+  extraEnv: []
+  service:
+    type: ClusterIP
+    port: 8090
+    annotations: {}
+  # Ingress for exposing the dashboard externally.
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    # hosts:
+    #   - host: dashboard.example.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    hosts: []
+    tls: []
 
 # Task queue connection string (required).
 # Example: redis://my-redis.production.svc.cluster.local:6379
@@ -54,6 +112,11 @@ costConfigmap: ""
 leaderElection:
   enabled: true
 
+# Operator log verbosity (zap). One of: debug, info, warn, error. Empty keeps operator default.
+logLevel: ""
+# Operator log encoder. One of: console, json. Empty keeps operator default.
+logEncoder: ""
+
 triggerWebhook:
   # Address the SwarmEvent webhook server listens on inside the pod.
   addr: ":8092"
@@ -69,9 +132,28 @@ mcpGateway:
   # Example: http://kubeswarm.kubeswarm-system.svc.cluster.local:8093
   url: ""
 
+# Prometheus metrics endpoint.
+metrics:
+  # Set to true to expose /metrics on port 8080 (HTTP, insecure).
+  enabled: false
+  port: 8080
+
+# Prometheus Operator ServiceMonitor. Creates a ServiceMonitor in the release namespace
+# pointing at the operator metrics endpoint. Requires metrics.enabled=true and the
+# Prometheus Operator CRDs installed in the cluster.
+serviceMonitor:
+  enabled: false
+  # Scrape interval and timeout.
+  interval: 30s
+  scrapeTimeout: 10s
+  # Extra labels added to the ServiceMonitor (used by Prometheus instance selectors).
+  labels: {}
+  # Prometheus relabeling rules.
+  relabelings: []
+  metricRelabelings: []
+
 # Admission webhooks for inline prompt size guardrails.
-# These are ValidatingWebhooks (failurePolicy=Ignore) - they warn/deny oversized inline
-# prompts before they hit etcd, but never block kubectl apply if the operator is unavailable.
+# These are ValidatingWebhooks - they warn/deny oversized inline prompts before they hit etcd.
 # Requires TLS for the operator webhook server (port 9443).
 admissionWebhooks:
   enabled: false
@@ -81,6 +163,17 @@ admissionWebhooks:
   # Base64-encoded CA certificate bundle. The API server uses this to verify the
   # operator's webhook TLS certificate. Required when enabled=true.
   caBundle: ""
+  # failurePolicy for prompt-size guardrail webhooks (vswarmteam, vswarmagent).
+  # Ignore: never block kubectl apply if the operator is unavailable. Recommended.
+  # Fail: block kubectl apply when the operator is unavailable.
+  failurePolicy: Ignore
+  # Timeout for guardrail webhook calls. Default 10s.
+  timeoutSeconds: 10
+  # Optional namespaceSelector/objectSelector applied to the guardrail webhooks
+  # (vswarmteam, vswarmagent). Policy webhooks keep their hardcoded
+  # kubeswarm.io/policy-governed selector.
+  namespaceSelector: {}
+  objectSelector: {}
 
 # Service for the SwarmEvent webhook server.
 service:
@@ -89,6 +182,13 @@ service:
   # NodePort: exposes externally via node port.
   type: ClusterIP
   port: 8092
+  # Annotations added to the Service. Common uses:
+  # - service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  # - networking.gke.io/load-balancer-type: Internal
+  annotations: {}
+  # Restricts which source IP ranges can reach LoadBalancer-type services.
+  # Ignored for ClusterIP. Example: ["10.0.0.0/8"]
+  loadBalancerSourceRanges: []
 
 
 # Audit trail configuration (RFC-0030).
@@ -105,9 +205,6 @@ auditLog:
   webhookURL: ""
   # redisURL is required when sink=redis. Use a separate Redis instance (see RFC-0031).
   redisURL: ""
-  # retention controls how long audit events are kept in the Redis stream.
-  # Go duration format (e.g., 168h for 7 days). Only applies to the redis sink.
-  retention: 168h
   # maxStreamLen is the MAXLEN ~ cap on the audit Redis stream per namespace.
   # Tune based on throughput: at 50 agents x 60 tasks/hr x 5 events = ~15k events/hr.
   # Default 100000 entries. Only applies to the redis sink.
@@ -121,8 +218,6 @@ auditLog:
     - "detail.input.*.apiKey"
     - "detail.input.*.password"
     - "detail.input.*.token"
-  # excludeActions is a list of action types to skip.
-  excludeActions: []
 
 # OpenTelemetry configuration.
 # When endpoint is set, the operator and agent pods export metrics and traces via OTLP HTTP.
@@ -150,8 +245,69 @@ agentExtraEnv: []
 # Mount additional env vars from existing ConfigMaps or Secrets.
 extraEnvFrom: []
 
+# Additional volumes mounted into the operator pod. Common use: custom CA bundles
+# for outbound TLS to corporate proxies or self-signed OTel collectors.
+# Example:
+#   extraVolumes:
+#     - name: custom-ca
+#       configMap:
+#         name: corporate-ca
+#   extraVolumeMounts:
+#     - name: custom-ca
+#       mountPath: /etc/ssl/certs/corporate-ca.crt
+#       subPath: ca.crt
+#       readOnly: true
+extraVolumes: []
+extraVolumeMounts: []
+
+# Soft memory limit for the operator Go runtime (GOMEMLIMIT).
+# Example: "100MiB". Leave empty to not set. Setting this close to resources.limits.memory
+# helps the Go GC avoid OOM kills under memory pressure.
+goMemLimit: ""
+
 # Annotations added to the operator pod.
 podAnnotations: {}
+
+# Labels added to the operator pod. Common uses: sidecar injection opt-in
+# (linkerd.io/inject: enabled), NetworkPolicy selectors.
+podLabels: {}
+
+# PriorityClassName for the operator pod. Typical values: system-cluster-critical,
+# system-node-critical, or a custom PriorityClass.
+priorityClassName: ""
+
+# Must be > GracefulShutdownTimeout (8s) + preStop sleep (5s) to give the operator
+# time to drain in-flight reconciles before Kubernetes sends SIGKILL.
+terminationGracePeriodSeconds: 30
+
+# Pod-level SecurityContext applied to the operator pod.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container-level SecurityContext applied to the manager container.
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+# Liveness and readiness probe tuning. Path and port are fixed (8081 /healthz and /readyz).
+livenessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 1
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+  successThreshold: 1
 
 # Resource limits and requests for the operator pod.
 resources:
@@ -165,6 +321,37 @@ resources:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Spread replicas across failure domains. Only meaningful when replicaCount > 1.
+# Example:
+#   topologySpreadConstraints:
+#     - maxSkew: 1
+#       topologyKey: topology.kubernetes.io/zone
+#       whenUnsatisfiable: ScheduleAnyway
+#       labelSelector:
+#         matchLabels:
+#           app.kubernetes.io/name: kubeswarm
+topologySpreadConstraints: []
+
+# PodDisruptionBudget for the operator Deployment.
+# Only meaningful when replicaCount > 1.
+podDisruptionBudget:
+  enabled: false
+  # Set one of minAvailable or maxUnavailable. Strings (percentages) or ints are valid.
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# NetworkPolicy for the operator pod. When enabled, applies a default-deny policy
+# and allows only the specified ingress/egress. Leave ingress/egress empty to block
+# all traffic except what extraIngress/extraEgress allows.
+networkPolicy:
+  enabled: false
+  # Ingress rules in addition to a default allow-from-same-namespace on the operator
+  # ports (8092, 8093, 9443, metrics.port when enabled).
+  extraIngress: []
+  # Egress rules. When empty, egress is unrestricted (no egress policy applied).
+  # Set to a non-empty list to restrict outbound traffic.
+  extraEgress: []
 
 # KEDA autoscaling support.
 # When an SwarmAgent has spec.runtime.autoscaling set, the operator creates a KEDA

@@ -1,0 +1,42 @@
+kubeswarm {{ .Chart.AppVersion }} installed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+Next steps:
+  # Check the operator is up
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "kubeswarm.fullname" . }}
+
+  # List installed CRDs
+  kubectl get crd | grep kubeswarm.io
+
+{{- if .Values.crds.install }}
+
+CRDs are managed by this chart (crds.install=true). They carry
+helm.sh/resource-policy: keep, so `helm uninstall` will NOT delete them
+(which would cascade-delete every SwarmAgent / SwarmTeam / SwarmRun in the
+cluster). Remove them explicitly if you really intend to:
+  kubectl delete crd -l app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- else }}
+
+CRDs are NOT managed by this chart (crds.install=false). You are responsible
+for installing and upgrading the kubeswarm CRDs yourself. Install them from
+the operator repo matching appVersion {{ .Chart.AppVersion }}:
+  kubectl apply -f https://raw.githubusercontent.com/kubeswarm/kubeswarm/v{{ .Chart.AppVersion }}/config/crd/bases/
+
+{{- end }}
+
+==== Migrating from chart version <= 0.1.5 ====
+Prior chart versions shipped CRDs via the Helm `crds/` directory, which never
+upgraded them on `helm upgrade`. Starting with 0.2.0 CRDs are templates and
+Helm manages their lifecycle.
+
+If `helm upgrade` fails with "invalid ownership metadata" on a CRD, take
+ownership of the existing CRDs before re-running:
+
+  for crd in $(kubectl get crd -o name | grep kubeswarm.io); do
+    kubectl annotate "$crd" meta.helm.sh/release-name={{ .Release.Name }} --overwrite
+    kubectl annotate "$crd" meta.helm.sh/release-namespace={{ .Release.Namespace }} --overwrite
+    kubectl label    "$crd" app.kubernetes.io/managed-by=Helm --overwrite
+  done
+
+Alternative escape hatch: `helm upgrade ... --set crds.install=false` and
+apply CRDs manually from the operator repo.

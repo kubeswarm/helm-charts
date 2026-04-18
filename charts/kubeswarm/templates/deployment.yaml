@@ -7,6 +7,11 @@ metadata:
     {{- include "kubeswarm.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "kubeswarm.selectorLabels" . | nindent 6 }}
@@ -14,20 +19,26 @@ spec:
     metadata:
       labels:
         {{- include "kubeswarm.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
       serviceAccountName: {{ include "kubeswarm.serviceAccountName" . }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       # Must be > GracefulShutdownTimeout (8s) + preStop sleep (5s) to give
       # the operator time to drain in-flight reconciles (including SwarmRun finalizer
       # removal) before Kubernetes sends SIGKILL.
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -44,6 +55,10 @@ spec:
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: manager
         image: {{ include "kubeswarm.image" . }}
@@ -55,6 +70,10 @@ spec:
         - --leader-elect
         {{- end }}
         - --health-probe-bind-address=:8081
+        {{- if .Values.metrics.enabled }}
+        - --metrics-bind-address=:{{ .Values.metrics.port }}
+        - --metrics-secure=false
+        {{- end }}
         - --trigger-webhook-addr={{ .Values.triggerWebhook.addr }}
         {{- if .Values.triggerWebhook.url }}
         - --trigger-webhook-url={{ .Values.triggerWebhook.url }}
@@ -67,6 +86,12 @@ spec:
         - --agent-image-pull-policy={{ .Values.agentImagePullPolicy }}
         {{- if .Values.costConfigmap }}
         - --cost-configmap={{ .Values.costConfigmap }}
+        {{- end }}
+        {{- if .Values.logLevel }}
+        - --zap-log-level={{ .Values.logLevel }}
+        {{- end }}
+        {{- if .Values.logEncoder }}
+        - --zap-encoder={{ .Values.logEncoder }}
         {{- end }}
         {{- if .Values.admissionWebhooks.enabled }}
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
@@ -90,9 +115,9 @@ spec:
           value: {{ include "kubeswarm.streamURL" . | quote }}
         - name: SPEND_STORE_URL
           value: {{ include "kubeswarm.spendURL" . | quote }}
-        {{- if .Values.triggerWebhook.url }}
-        - name: TRIGGER_WEBHOOK_URL
-          value: {{ .Values.triggerWebhook.url | quote }}
+        {{- if .Values.goMemLimit }}
+        - name: GOMEMLIMIT
+          value: {{ .Values.goMemLimit | quote }}
         {{- end }}
         {{- if .Values.otel.endpoint }}
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -132,6 +157,11 @@ spec:
           {{- toYaml . | nindent 8 }}
         {{- end }}
         ports:
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          containerPort: {{ .Values.metrics.port }}
+          protocol: TCP
+        {{- end }}
         - name: webhook
           containerPort: 8092
           protocol: TCP
@@ -143,12 +173,10 @@ spec:
           containerPort: 9443
           protocol: TCP
         {{- end }}
+        {{- with .Values.containerSecurityContext }}
         securityContext:
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         lifecycle:
           preStop:
             # Sleep before SIGTERM so kube-proxy finishes draining in-flight requests
@@ -160,25 +188,41 @@ spec:
           httpGet:
             path: /healthz
             port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
         readinessProbe:
           httpGet:
             path: /readyz
             port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        {{- if .Values.admissionWebhooks.enabled }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+        {{- if or .Values.admissionWebhooks.enabled .Values.extraVolumeMounts }}
         volumeMounts:
+        {{- if .Values.admissionWebhooks.enabled }}
         - name: webhook-cert
           mountPath: /tmp/k8s-webhook-server/serving-certs
           readOnly: true
         {{- end }}
+        {{- with .Values.extraVolumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-      {{- if .Values.admissionWebhooks.enabled }}
+      {{- if or .Values.admissionWebhooks.enabled .Values.extraVolumes }}
       volumes:
+      {{- if .Values.admissionWebhooks.enabled }}
       - name: webhook-cert
         secret:
           secretName: {{ .Values.admissionWebhooks.certSecret }}
+      {{- end }}
+      {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- end }}

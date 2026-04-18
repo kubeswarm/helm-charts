@@ -1,7 +1,10 @@
 {{- if .Values.admissionWebhooks.enabled }}
-# ValidatingWebhookConfiguration for inline prompt size guardrails.
-# failurePolicy=Ignore - these webhooks never block kubectl apply when the operator is
-# unavailable (e.g. during rolling restart or initial cluster bootstrap).
+# ValidatingWebhookConfiguration.
+# Guardrail webhooks (vswarmteam, vswarmagent) use admissionWebhooks.failurePolicy
+# (default Ignore) so they never block kubectl apply when the operator is unavailable.
+#
+# Policy webhooks (vpolicy-swarmagent, vpolicy-swarmteam) are hardcoded to
+# failurePolicy=Fail and only fire in namespaces labeled kubeswarm.io/policy-governed=true.
 #
 # Requires:
 #   admissionWebhooks.certSecret - a Secret with tls.crt / tls.key in the operator namespace
@@ -22,8 +25,17 @@ webhooks:
         path: /validate-kubeswarm-v1alpha1-swarmteam
         port: 9443
       caBundle: {{ .Values.admissionWebhooks.caBundle | quote }}
-    failurePolicy: Ignore
+    failurePolicy: {{ .Values.admissionWebhooks.failurePolicy | default "Ignore" }}
+    timeoutSeconds: {{ .Values.admissionWebhooks.timeoutSeconds | default 10 }}
     sideEffects: None
+    {{- with .Values.admissionWebhooks.namespaceSelector }}
+    namespaceSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.admissionWebhooks.objectSelector }}
+    objectSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     rules:
       - apiGroups: ["kubeswarm.io"]
         apiVersions: ["v1alpha1"]
@@ -38,11 +50,66 @@ webhooks:
         path: /validate-kubeswarm-v1alpha1-swarmagent
         port: 9443
       caBundle: {{ .Values.admissionWebhooks.caBundle | quote }}
-    failurePolicy: Ignore
+    failurePolicy: {{ .Values.admissionWebhooks.failurePolicy | default "Ignore" }}
+    timeoutSeconds: {{ .Values.admissionWebhooks.timeoutSeconds | default 10 }}
     sideEffects: None
+    {{- with .Values.admissionWebhooks.namespaceSelector }}
+    namespaceSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.admissionWebhooks.objectSelector }}
+    objectSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     rules:
       - apiGroups: ["kubeswarm.io"]
         apiVersions: ["v1alpha1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["swarmagents"]
+  # SwarmPolicy enforcement webhook - validates agents against namespace policies.
+  # failurePolicy=Fail - blocks agent creates/updates if webhook unavailable in governed
+  # namespaces. Emergency bypass: annotate ValidatingWebhookConfiguration or namespace.
+  # namespaceSelector targets only governed namespaces (zero overhead for ungoverned).
+  - name: vpolicy-swarmagent.kb.io
+    admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: {{ include "kubeswarm.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-kubeswarm-v1alpha1-swarmagent-policy
+        port: 9443
+      caBundle: {{ .Values.admissionWebhooks.caBundle | quote }}
+    failurePolicy: Fail
+    timeoutSeconds: 5
+    sideEffects: None
+    namespaceSelector:
+      matchLabels:
+        kubeswarm.io/policy-governed: "true"
+    rules:
+      - apiGroups: ["kubeswarm.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["swarmagents"]
+  # SwarmPolicy output validation webhook - validates SwarmTeam pipeline steps
+  # have required output validation level (minValidation from policy).
+  - name: vpolicy-swarmteam.kb.io
+    admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: {{ include "kubeswarm.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-kubeswarm-v1alpha1-swarmteam-policy
+        port: 9443
+      caBundle: {{ .Values.admissionWebhooks.caBundle | quote }}
+    failurePolicy: Fail
+    timeoutSeconds: 5
+    sideEffects: None
+    namespaceSelector:
+      matchLabels:
+        kubeswarm.io/policy-governed: "true"
+    rules:
+      - apiGroups: ["kubeswarm.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["swarmteams"]
 {{- end }}

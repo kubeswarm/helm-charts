@@ -1,8 +1,10 @@
+{{- if .Values.crds.install }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    helm.sh/resource-policy: keep
     controller-gen.kubebuilder.io/version: v0.20.1
   name: swarmsettings.kubeswarm.io
 spec:
@@ -54,6 +56,36 @@ spec:
           spec:
             description: SwarmSettingsSpec defines the shared configuration values.
             properties:
+              auditLog:
+                description: |-
+                  Observability configures namespace-level observability settings.
+                  Overrides cluster-level (Helm) defaults; can be overridden per-agent.
+                  AuditLog configures the structured audit trail at namespace level.
+                  Overrides cluster-level (Helm) audit config; can be overridden per-agent.
+                properties:
+                  mode:
+                    default: "off"
+                    description: |-
+                      Mode controls the verbosity of audit logging.
+                      off: no audit events emitted (default).
+                      actions: emit structured action events.
+                      verbose: emit action events plus full LLM conversation turns.
+                    enum:
+                    - "off"
+                    - actions
+                    - verbose
+                    type: string
+                  redact:
+                    description: |-
+                      Redact is a list of glob patterns for field path redaction.
+                      Patterns use dot-separated paths matched via Go's path.Match,
+                      where * matches exactly one path segment.
+                      Example: "detail.input.*.apiKey"
+                    items:
+                      type: string
+                    maxItems: 20
+                    type: array
+                type: object
               fragments:
                 description: |-
                   Fragments is an ordered list of named prompt fragments composed into the agent system prompt.
@@ -89,6 +121,7 @@ spec:
                   - name
                   - text
                   type: object
+                maxItems: 50
                 type: array
               memoryBackend:
                 default: in-context
@@ -98,40 +131,6 @@ spec:
                 - vector-store
                 - redis
                 type: string
-              observability:
-                description: |-
-                  Observability configures namespace-level observability settings.
-                  Overrides cluster-level (Helm) defaults; can be overridden per-agent.
-                properties:
-                  auditLog:
-                    description: |-
-                      AuditLog configures the structured audit trail at namespace level.
-                      Overrides cluster-level (Helm) audit config; can be overridden per-agent.
-                    properties:
-                      mode:
-                        default: "off"
-                        description: |-
-                          Mode controls the verbosity of audit logging.
-                          off: no audit events emitted (default).
-                          actions: emit structured action events.
-                          verbose: emit action events plus full LLM conversation turns.
-                        enum:
-                        - "off"
-                        - actions
-                        - verbose
-                        type: string
-                      redact:
-                        description: |-
-                          Redact is a list of glob patterns for field path redaction.
-                          Patterns use dot-separated paths matched via Go's path.Match,
-                          where * matches exactly one path segment.
-                          Example: "detail.input.*.apiKey"
-                        items:
-                          type: string
-                        maxItems: 20
-                        type: array
-                    type: object
-                type: object
               outputFormat:
                 description: OutputFormat specifies the expected output format (e.g.
                   "structured-json").
@@ -199,6 +198,7 @@ spec:
                       Example: ["https://search.mcp.example.com/", "https://browser.mcp.example.com/"]
                     items:
                       type: string
+                    maxItems: 50
                     type: array
                   requireMCPAuth:
                     description: |-
@@ -288,3 +288,4 @@ spec:
     storage: true
     subresources:
       status: {}
+{{- end }}

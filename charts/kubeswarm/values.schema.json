@@ -2,6 +2,28 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "crds": {
+      "type": "object",
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "description": "Install and manage CRDs as part of the chart. Set false when managing CRDs out-of-band (GitOps)."
+        }
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of operator replicas. >1 requires leaderElection.enabled=true."
+    },
+    "revisionHistoryLimit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "strategy": {
+      "type": "object",
+      "description": "Deployment strategy. Leave empty for Kubernetes defaults."
+    },
     "taskQueueURL": {
       "type": "string",
       "description": "Task queue URL (required). Example: redis://my-redis:6379",
@@ -17,6 +39,164 @@
       "description": "Redis URL for spend tracking. Defaults to taskQueueURL when empty.",
       "pattern": "^(redis://|rediss://|).*$"
     },
+    "logLevel": {
+      "type": "string",
+      "enum": ["", "debug", "info", "warn", "error"],
+      "description": "Operator zap log level."
+    },
+    "logEncoder": {
+      "type": "string",
+      "enum": ["", "console", "json"],
+      "description": "Operator zap log encoder."
+    },
+    "goMemLimit": {
+      "type": "string",
+      "description": "GOMEMLIMIT for the operator Go runtime. Example: 100MiB. Empty to not set."
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "annotations": { "type": "object" },
+        "loadBalancerSourceRanges": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interval": { "type": "string" },
+        "scrapeTimeout": { "type": "string" },
+        "labels": { "type": "object" },
+        "relabelings": { "type": "array" },
+        "metricRelabelings": { "type": "array" }
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" }
+          ]
+        },
+        "maxUnavailable": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" }
+          ]
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "extraIngress": { "type": "array" },
+        "extraEgress": { "type": "array" }
+      }
+    },
+    "admissionWebhooks": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "certSecret": { "type": "string" },
+        "caBundle": { "type": "string" },
+        "failurePolicy": {
+          "type": "string",
+          "enum": ["Ignore", "Fail"]
+        },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "namespaceSelector": { "type": "object" },
+        "objectSelector": { "type": "object" }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "type": "string" },
+        "imagePullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "resources": { "type": "object" },
+        "nodeSelector": { "type": "object" },
+        "tolerations": { "type": "array" },
+        "affinity": { "type": "object" },
+        "podAnnotations": { "type": "object" },
+        "podLabels": { "type": "object" },
+        "priorityClassName": { "type": "string" },
+        "extraEnv": { "type": "array" },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+            },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "annotations": { "type": "object" }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "className": { "type": "string" },
+            "annotations": { "type": "object" },
+            "hosts": { "type": "array" },
+            "tls": { "type": "array" }
+          }
+        }
+      }
+    },
+    "livenessProbe": {
+      "type": "object",
+      "properties": {
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 },
+        "successThreshold": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "readinessProbe": {
+      "type": "object",
+      "properties": {
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 },
+        "successThreshold": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "priorityClassName": { "type": "string" },
+    "terminationGracePeriodSeconds": { "type": "integer", "minimum": 0 },
+    "podSecurityContext": { "type": "object" },
+    "containerSecurityContext": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "topologySpreadConstraints": { "type": "array" },
+    "extraVolumes": { "type": "array" },
+    "extraVolumeMounts": { "type": "array" },
     "auditLog": {
       "type": "object",
       "properties": {
@@ -39,11 +219,6 @@
           "type": "string",
           "description": "Webhook URL for audit log. Required when sink is webhook."
         },
-        "retention": {
-          "type": "string",
-          "description": "Audit event retention in Go duration format (e.g., 168h for 7 days).",
-          "pattern": "^[0-9]+(h|m|s)$"
-        },
         "maxStreamLen": {
           "type": "integer",
           "minimum": 1000,
@@ -58,11 +233,6 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Glob patterns for field path redaction."
-        },
-        "excludeActions": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Action types to skip."
         }
       }
     },

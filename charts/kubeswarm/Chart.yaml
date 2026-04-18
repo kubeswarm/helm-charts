@@ -2,7 +2,7 @@ apiVersion: v2
 name: kubeswarm
 description: Kubernetes operator that manages LLM-based agents as first-class resources.
 type: application
-version: 0.1.4
+version: 0.2.0
 appVersion: "0.1.0-alpha.2"
 keywords:
   - ai
@@ -76,6 +76,11 @@ annotations:
       name: swarmnotifies.kubeswarm.io
       displayName: SwarmNotify
       description: Notification channel (Slack, webhook) for alerts
+    - kind: SwarmPolicy
+      version: v1alpha1
+      name: swarmpolicies.kubeswarm.io
+      displayName: SwarmPolicy
+      description: Platform-level guardrails enforced on all SwarmAgents in the namespace
     - kind: SwarmSettings
       version: v1alpha1
       name: swarmsettings.kubeswarm.io

@@ -20,8 +20,16 @@ rules:
   - ""
   resources:
   - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - secrets
   verbs:
+  - create
   - get
   - list
   - watch
@@ -72,7 +80,6 @@ rules:
   - swarmnotifies
   - swarmregistries
   - swarmruns
-
   - swarmsettings
   - swarmteams
   verbs:
@@ -91,8 +98,8 @@ rules:
   - swarmevents/finalizers
   - swarmmemories/finalizers
   - swarmnotifies/finalizers
+  - swarmregistries/finalizers
   - swarmruns/finalizers
-  - swarmsecrets/finalizers
   - swarmsettings/finalizers
   - swarmteams/finalizers
   verbs:
@@ -105,15 +112,23 @@ rules:
   - swarmevents/status
   - swarmmemories/status
   - swarmnotifies/status
+  - swarmpolicies/status
   - swarmregistries/status
   - swarmruns/status
-  - swarmsecrets/status
   - swarmsettings/status
   - swarmteams/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - kubeswarm.io
+  resources:
+  - swarmpolicies
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - keda.sh
   resources:

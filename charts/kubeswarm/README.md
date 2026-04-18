@@ -52,6 +52,7 @@ helm upgrade kubeswarm kubeswarm/kubeswarm \
 | `admissionWebhooks.enabled` | `false` | Enable validating admission webhooks |
 | `otel.endpoint` | `""` | OTLP collector endpoint |
 | `agentExtraEnv` | `[]` | Extra env vars for all agent pods |
+| `crds.install` | `true` | Install and upgrade CRDs with the chart. Set `false` when managing CRDs via GitOps |
 
 ## CRDs installed
 
@@ -66,6 +67,7 @@ helm upgrade kubeswarm kubeswarm/kubeswarm \
 | SwarmMemory | Vector memory store reference (pgvector, Qdrant) |
 | SwarmSettings | Namespace-level defaults for config and policy |
 | SwarmNotify | Notification channels (Slack, webhook) |
+| SwarmPolicy | Platform-level guardrails enforced on all SwarmAgents in a namespace |
 
 ## Production checklist
 

@@ -1,8 +1,10 @@
+{{- if .Values.crds.install }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    helm.sh/resource-policy: keep
     controller-gen.kubebuilder.io/version: v0.20.1
   name: swarmnotifies.kubeswarm.io
 spec:
@@ -20,9 +22,6 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.channelCount
-      name: Channels
-      type: integer
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -152,6 +151,7 @@ spec:
                             required:
                             - name
                             type: object
+                          maxItems: 20
                           type: array
                         method:
                           default: POST
@@ -199,8 +199,10 @@ spec:
                     rule: self.type == 'webhook' || !has(self.webhook)
                   - message: slack config can only be set when type is slack
                     rule: self.type == 'slack' || !has(self.slack)
+                maxItems: 20
                 minItems: 1
                 type: array
+                x-kubernetes-list-type: atomic
               "on":
                 description: |-
                   On lists the events that trigger notifications.
@@ -216,6 +218,7 @@ spec:
                   - DailyLimitReached
                   - AgentDegraded
                   type: string
+                maxItems: 10
                 type: array
               rateLimitSeconds:
                 default: 300
@@ -230,10 +233,6 @@ spec:
           status:
             description: SwarmNotifyStatus defines the observed state of SwarmNotify.
             properties:
-              channelCount:
-                description: ChannelCount is the number of configured notification
-                  channels.
-                type: integer
               conditions:
                 description: Conditions reflect the current state of the SwarmNotify.
                 items:
@@ -334,6 +333,7 @@ spec:
                   - succeeded
                   type: object
                 type: array
+                x-kubernetes-list-type: atomic
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation this status
                   reflects.
@@ -347,3 +347,4 @@ spec:
     storage: true
     subresources:
       status: {}
+{{- end }}
