@@ -84,6 +84,9 @@ spec:
         {{- end }}
         - --agent-image={{ .Values.agentImage }}
         - --agent-image-pull-policy={{ .Values.agentImagePullPolicy }}
+        {{- if .Values.agentImagePullSecrets }}
+        - --agent-image-pull-secrets={{ .Values.agentImagePullSecrets }}
+        {{- end }}
         {{- if .Values.costConfigmap }}
         - --cost-configmap={{ .Values.costConfigmap }}
         {{- end }}

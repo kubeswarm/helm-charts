@@ -50,6 +50,10 @@ serviceAccount:
 # The container image used for SwarmAgent runtime pods.
 agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.2.0-beta.1
 agentImagePullPolicy: Always
+# Secrets for pulling agent runtime images from private registries.
+# Comma-separated list of secret names, e.g. "harbor-creds,ecr-creds".
+# Per-agent spec.runtime.imagePullSecrets overrides this.
+agentImagePullSecrets: ""
 
 # dashboard - real-time web UI for monitoring and operating deployments.
 # Disabled by default; enable for local dev or in-cluster monitoring.
