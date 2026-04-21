@@ -48,7 +48,7 @@ serviceAccount:
   annotations: {}
 
 # The container image used for SwarmAgent runtime pods.
-agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.2.0-beta.1
+agentImage: ghcr.io/kubeswarm/kubeswarm-runtime:0.2.0
 agentImagePullPolicy: Always
 # Secrets for pulling agent runtime images from private registries.
 # Comma-separated list of secret names, e.g. "harbor-creds,ecr-creds".
