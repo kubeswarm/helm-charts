@@ -66,8 +66,101 @@ entries:
       artifacthub.io/operatorCapabilities: Seamless Upgrades
       artifacthub.io/prerelease: "true"
     apiVersion: v2
+    appVersion: 0.2.0
+    created: "2026-04-21T22:22:53.525536738Z"
+    description: Kubernetes operator that manages LLM-based agents as first-class
+      resources.
+    digest: 56bf87082323cf9ef063e44e4eccb8799aed7546515254c1369249bb84afed93
+    home: https://kubeswarm.io
+    icon: https://assets.kubeswarm.io/icon-512.png
+    keywords:
+    - ai
+    - agents
+    - llm
+    - llmops
+    - mcp
+    - kubernetes
+    - operator
+    - ai-agents
+    maintainers:
+    - email: erdem@kubeswarm.io
+      name: rdmnl
+      url: https://github.com/rdmnl
+    name: kubeswarm
+    sources:
+    - https://github.com/kubeswarm/kubeswarm
+    - https://github.com/kubeswarm/helm-charts
+    type: application
+    urls:
+    - https://kubeswarm.github.io/helm-charts/kubeswarm-0.3.1.tgz
+    version: 0.3.1
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/crds: |
+        - kind: SwarmAgent
+          version: v1alpha1
+          name: swarmagents.kubeswarm.io
+          displayName: SwarmAgent
+          description: An LLM-based agent with model, tools, and runtime config
+        - kind: SwarmTeam
+          version: v1alpha1
+          name: swarmteams.kubeswarm.io
+          displayName: SwarmTeam
+          description: A team of agents with orchestration (pipeline, routed, or dynamic)
+        - kind: SwarmRun
+          version: v1alpha1
+          name: swarmruns.kubeswarm.io
+          displayName: SwarmRun
+          description: A single execution of a SwarmTeam pipeline
+        - kind: SwarmBudget
+          version: v1alpha1
+          name: swarmbudgets.kubeswarm.io
+          displayName: SwarmBudget
+          description: Token spend limits with hard-stop enforcement
+        - kind: SwarmEvent
+          version: v1alpha1
+          name: swarmevents.kubeswarm.io
+          displayName: SwarmEvent
+          description: Cron, webhook, or chain triggers for runs
+        - kind: SwarmMemory
+          version: v1alpha1
+          name: swarmmemories.kubeswarm.io
+          displayName: SwarmMemory
+          description: Vector memory store reference for agent context
+        - kind: SwarmRegistry
+          version: v1alpha1
+          name: swarmregistries.kubeswarm.io
+          displayName: SwarmRegistry
+          description: Agent capability index for discovery and routing
+        - kind: SwarmNotify
+          version: v1alpha1
+          name: swarmnotifies.kubeswarm.io
+          displayName: SwarmNotify
+          description: Notification channel (Slack, webhook) for alerts
+        - kind: SwarmPolicy
+          version: v1alpha1
+          name: swarmpolicies.kubeswarm.io
+          displayName: SwarmPolicy
+          description: Platform-level guardrails enforced on all SwarmAgents in the namespace
+        - kind: SwarmSettings
+          version: v1alpha1
+          name: swarmsettings.kubeswarm.io
+          displayName: SwarmSettings
+          description: Namespace-level defaults for audit, observability, and policy
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://kubeswarm.github.io/kubeswarm-docs
+        - name: Source
+          url: https://github.com/kubeswarm/kubeswarm
+        - name: support
+          url: https://github.com/kubeswarm/kubeswarm/issues
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Seamless Upgrades
+      artifacthub.io/prerelease: "true"
+    apiVersion: v2
     appVersion: 0.2.0-alpha.1
-    created: "2026-04-18T21:58:23.972356339Z"
+    created: "2026-04-21T22:22:53.522510496Z"
     description: Kubernetes operator that manages LLM-based agents as first-class
       resources.
     digest: adfbc23f46af4e9418395bd80e3e517b6a480752f1678f29e6fe186ccf2c0ed5
@@ -160,7 +253,7 @@ entries:
       artifacthub.io/prerelease: "true"
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-04-18T21:58:23.969425894Z"
+    created: "2026-04-21T22:22:53.520131928Z"
     description: Kubernetes operator that manages LLM-based agents as first-class
       resources.
     digest: 7d49c15f2b256155ada8d6a9cdd733a153649b03f3ca4e6cbb23bb213237ea4e
@@ -248,7 +341,7 @@ entries:
       artifacthub.io/prerelease: "true"
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-04-18T21:58:23.967090906Z"
+    created: "2026-04-21T22:22:53.517716955Z"
     description: Kubernetes operator that manages LLM-based agents as first-class
       resources.
     digest: d35613e234f4d0b1742f038c99e6ea9df4c750e5e3c3cf5aad5dff8ff13b06ec
@@ -336,7 +429,7 @@ entries:
       artifacthub.io/prerelease: "true"
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-04-18T21:58:23.965273737Z"
+    created: "2026-04-21T22:22:53.514745929Z"
     description: Kubernetes operator that manages LLM-based agents as first-class
       resources.
     digest: b737e138eef9a8916cb98b5516e131a8b179edf50bc48a9e7c7f06ddaf3a0432
@@ -424,7 +517,7 @@ entries:
       artifacthub.io/prerelease: "true"
     apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-04-18T21:58:23.962727977Z"
+    created: "2026-04-21T22:22:53.512857147Z"
     description: Kubernetes operator that manages LLM-based agents as first-class
       resources.
     digest: d3806d92dc9d98baf5c77fcd60f228b47a3ca2559a8787858fac66cd304dddce
@@ -453,7 +546,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 0.1.0-alpha.2
-    created: "2026-04-18T21:58:23.960901951Z"
+    created: "2026-04-21T22:22:53.510929761Z"
     description: Kubernetes operator for running AI agents in production.
     digest: 7ee17caee4aad656850285120fa4468f938271c289fb05b18c36014ee38f8abe
     home: https://kubeswarm.io
@@ -476,7 +569,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 0.1.0-alpha.1
-    created: "2026-04-18T21:58:23.959112163Z"
+    created: "2026-04-21T22:22:53.508305254Z"
     description: Kubernetes operator for running AI agents in production.
     digest: c936709cd9ed53a574159d01f2cba6a55911cd975c07d1f9506096252709d44d
     home: https://kubeswarm.io
@@ -497,4 +590,4 @@ entries:
     urls:
     - https://kubeswarm.github.io/helm-charts/kubeswarm-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-18T21:58:23.956238444Z"
+generated: "2026-04-21T22:22:53.50623212Z"
