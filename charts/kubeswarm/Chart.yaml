@@ -30,10 +30,10 @@ annotations:
   artifacthub.io/prerelease: "true"
   artifacthub.io/links: |
     - name: Documentation
-      url: https://kubeswarm.github.io/kubeswarm-docs
+      url: https://docs.kubeswarm.io
     - name: Source
       url: https://github.com/kubeswarm/kubeswarm
-    - name: support
+    - name: Support
       url: https://github.com/kubeswarm/kubeswarm/issues
   artifacthub.io/crds: |
     - kind: SwarmAgent
