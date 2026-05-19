@@ -42,10 +42,10 @@ extraEnv: []
 
 auditLog:
   mode: "actions"
-  sink: stdout
+  sink: redis
+  redisURL: "redis://redis.kubeswarm-system.svc.cluster.local:6379"
 
 dashboard:
-  # Dashboard image is not built in this repo yet; leave disabled for local dev.
-  enabled: false
+  enabled: true
   image: kubeswarm-dashboard:dev
   imagePullPolicy: Never

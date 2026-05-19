@@ -28,11 +28,13 @@ rules:
       - swarmnotifies
       - swarmbudgets
       - swarmregistries
+      - swarmpolicies
     verbs: ["get", "list", "watch"]
   - apiGroups: ["kubeswarm.io"]
     resources:
       - swarmagents
       - swarmevents
+      - swarmnotifies
     verbs: ["patch"]
   - apiGroups: ["kubeswarm.io"]
     resources:
@@ -134,10 +136,14 @@ spec:
           image: {{ .Values.dashboard.image }}
           imagePullPolicy: {{ .Values.dashboard.imagePullPolicy }}
           args: ["--addr", ":8090"]
-          {{- with .Values.dashboard.extraEnv }}
           env:
+            - name: TASK_QUEUE_URL
+              value: {{ include "kubeswarm.queueURL" . | quote }}
+            - name: SPEND_STORE_URL
+              value: {{ include "kubeswarm.spendURL" . | quote }}
+            {{- with .Values.dashboard.extraEnv }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 8090

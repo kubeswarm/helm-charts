@@ -174,8 +174,8 @@ To inject environment variables into all agent pods cluster-wide (e.g. for Ollam
 | CRD | Description |
 |---|---|
 | SwarmAgent | LLM agent with model, tools, guardrails, and autoscaling |
-| SwarmTeam | Multi-agent team with three modes: pipeline (DAG), dynamic (delegate), or routed (LLM dispatch) |
-| SwarmRun | Single execution of a pipeline with full audit trail |
+| SwarmTeam | Multi-agent team with four modes: pipeline (DAG), dynamic (delegate), routed (LLM dispatch), or search (tree exploration) |
+| SwarmRun | Single execution of a pipeline or search with full audit trail |
 | SwarmBudget | Token spend limits with hard-stop enforcement |
 | SwarmEvent | Cron, webhook, and chain triggers |
 | SwarmRegistry | Agent capability discovery and routing |

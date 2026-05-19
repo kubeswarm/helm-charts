@@ -45,12 +45,12 @@ annotations:
       version: v1alpha1
       name: swarmteams.kubeswarm.io
       displayName: SwarmTeam
-      description: A team of agents with orchestration (pipeline, routed, or dynamic)
+      description: A team of agents with orchestration (pipeline, routed, dynamic, or search)
     - kind: SwarmRun
       version: v1alpha1
       name: swarmruns.kubeswarm.io
       displayName: SwarmRun
-      description: A single execution of a SwarmTeam pipeline
+      description: A single execution of a SwarmTeam pipeline or search
     - kind: SwarmBudget
       version: v1alpha1
       name: swarmbudgets.kubeswarm.io
